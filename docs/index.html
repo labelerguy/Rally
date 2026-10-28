@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rally Team Stats</title>
+<meta name="description" content="Volleyball stats and highlight clips from practice and match film.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f5fa; --panel:#ffffff; --panel2:#efedf6; --line:#e2dfec; --text:#17151f; --dim:#5d5970; --faint:#8b879c;
+  --accent:#5b2fd6; --accent-soft:#ece6ff; --gold:#c98a00; --good:#0f9f62; --bad:#d6334a; --r:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--bg:#0d0c12;--panel:#16141e;--panel2:#1f1c2a;--line:#2a2638;--text:#ecebf2;--dim:#a7a3b9;--faint:#726e86;--accent:#a084ff;--accent-soft:#2a2342;--gold:#f5c542;--good:#3ecf8e;--bad:#ff5d6c}
+}
+:root[data-theme="dark"]{--bg:#0d0c12;--panel:#16141e;--panel2:#1f1c2a;--line:#2a2638;--text:#ecebf2;--dim:#a7a3b9;--faint:#726e86;--accent:#a084ff;--accent-soft:#2a2342;--gold:#f5c542;--good:#3ecf8e;--bad:#ff5d6c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,system-ui,sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 60px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+h1{font-size:30px;line-height:1.1;margin:0;font-weight:800;letter-spacing:-.02em}
+h1 span{color:var(--accent)}
+.sub{color:var(--dim);margin-top:6px}
+select{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.tile .k{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);font-weight:600}
+.tile .v{font-size:28px;font-weight:800;margin-top:4px;font-variant-numeric:tabular-nums}
+.tile .d{font-size:12px;color:var(--dim)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:11px 14px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);font-weight:600;background:var(--panel2);cursor:pointer;user-select:none}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:inherit}
+tbody tr{cursor:pointer;background:var(--panel)}
+tbody tr:hover{background:var(--panel2)}
+tbody tr.on{background:var(--accent-soft)}
+td.name{font-weight:600}
+.muted{color:var(--faint)}
+.pos{color:var(--good)}.neg{color:var(--bad)}
+.note{color:var(--dim);font-size:13px;margin:12px 2px 26px}
+.player{display:none;margin-top:22px;gap:18px;grid-template-columns:1.35fr 1fr}
+.player.on{display:grid}
+.pp{padding:16px}
+.ph{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.ph h2{margin:0;font-size:22px}
+.btn{font:inherit;font-weight:600;border:0;border-radius:10px;padding:9px 14px;background:var(--accent);color:#fff;cursor:pointer}
+.btn.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+.player-video{aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#aaa;text-align:center;padding:0}
+.player-video>div,.player-video iframe{width:100%;height:100%}
+.now{font-size:13px;color:var(--dim);margin-top:8px;min-height:20px}
+.skills{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.sk{background:var(--panel2);border-radius:10px;padding:10px 12px}
+.sk .k{font-size:12px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.sk .v{font-weight:700;font-size:18px}
+.sk .d{font-size:12px;color:var(--dim)}
+.clips{max-height:290px;overflow:auto;margin-top:14px;border-top:1px solid var(--line)}
+.clip{display:flex;gap:10px;align-items:center;padding:8px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.clip:hover{color:var(--accent)}
+.clip .t{font:500 12px "JetBrains Mono",monospace;color:var(--faint);width:56px}
+.tag{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);color:var(--dim)}
+.tag.great{color:var(--gold);border-color:currentColor}.tag.error{color:var(--bad);border-color:currentColor}
+.empty{padding:50px 20px;text-align:center;color:var(--dim)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.filters button{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--panel);color:var(--dim);padding:5px 11px;border-radius:99px;cursor:pointer}
+.filters button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (max-width:820px){.tiles{grid-template-columns:repeat(2,1fr)}.player.on{grid-template-columns:1fr}.skills{grid-template-columns:repeat(2,1fr)}h1{font-size:24px}}
+@media (max-width:480px){.wrap{padding:20px 16px 50px}.tile .v{font-size:22px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1>Rally<span>.</span> <span id="team" style="color:var(--text)"></span></h1><div class="sub" id="sub">Stats from practice and match film. Every touch here was confirmed by a person.</div></div>
+    <select id="session" aria-label="Session"></select>
+  </header>
+  <div id="app"></div>
+</div>
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+const $=s=>document.querySelector(s);
+const ACTS=["attack","serve","pass","dig","set","block","other"];
+let IDX, SESS={}, cur=null, sortKey="touches", sortDir=-1, yt=null, ytReady=false, queue=[], qi=0;
+window.onYouTubeIframeAPIReady=()=>{ytReady=true};
+
+const fmt=t=>{t=Math.max(0,t);const h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=Math.floor(t%60);return (h?h+":"+String(m).padStart(2,"0"):m)+":"+String(s).padStart(2,"0")};
+const pct=(a,b)=>b?Math.round(100*a/b)+"%":"—";
+const eff=(k,e,n)=>n?((k-e)/n).toFixed(3).replace(/^0/,"").replace(/^-0/,"-"):"—";
+const blank=()=>Object.fromEntries(ACTS.map(a=>[a,{n:0,great:0,good:0,error:0}]));
+function add(dst,src){for(const a of ACTS){const s=src[a]||{};for(const k of ["n","great","good","error"]) dst[a][k]+=s[k]||0}}
+function passAvg(b){const r=b.great+b.good+b.error;return r?((3*b.great+2*b.good)/r).toFixed(2):"—"}
+function derive(by){const A=by.attack,S=by.serve,P=by.pass;
+  return {touches:ACTS.reduce((s,a)=>s+by[a].n,0),kills:A.great,ae:A.error,ta:A.n,eff:A.n?(A.great-A.error)/A.n:-9,
+    aces:S.great,se:S.error,sn:S.n,pass:P.great+P.good+P.error?(3*P.great+2*P.good)/(P.great+P.good+P.error):-1,pn:P.n,
+    sets:by.set.n,assists:by.set.great,blocks:by.block.n,stuffs:by.block.great,digs:by.dig.n}}
+
+async function load(){
+  try{IDX=await (await fetch("data/index.json",{cache:"no-store"})).json()}catch{IDX={sessions:[]}}
+  if(IDX.team) $("#team").textContent=IDX.team;
+  if(!IDX.sessions.length){$("#app").innerHTML=`<div class="card empty"><b>No sessions published yet.</b><br>Process film with Rally, confirm touches in the review app, then run <code>python -m rally publish SESSION --push</code>.</div>`;$("#session").style.display="none";return}
+  $("#session").innerHTML=(IDX.sessions.length>1?`<option value="__all">All sessions</option>`:"")+IDX.sessions.map(s=>`<option value="${s.id}">${s.title}${s.date?" · "+s.date:""}</option>`).join("");
+  const h=new URLSearchParams(location.hash.slice(1));
+  if(h.get("s")&&[...$("#session").options].some(o=>o.value===h.get("s"))) $("#session").value=h.get("s"); else $("#session").value=IDX.sessions[0].id;
+  $("#session").onchange=()=>{cur=null;render()};
+  await render(h.get("p"));
+}
+async function getSess(id){return SESS[id] ||= await (await fetch(`data/sessions/${id}.json`,{cache:"no-store"})).json()}
+async function data(){
+  const id=$("#session").value, ids=id==="__all"?IDX.sessions.map(s=>s.id):[id];
+  const ss=await Promise.all(ids.map(getSess)); const team=blank(), players={};
+  for(const s of ss){add(team,s.team);for(const p of s.players){const q=players[p.name] ||= {name:p.name,by:blank(),clips:[]};add(q.by,p.by_action);q.clips.push(...p.clips.map(c=>({...c,yt:s.youtube,sid:s.id,stitle:s.title})))}}
+  return {ss,team,players:Object.values(players)};
+}
+async function render(openName){
+  const {ss,team,players}=await data(), T=derive(team), single=ss.length===1?ss[0]:null;
+  const typeNote = single && single.type==="practice" ? "Practice film: drills repeat the same skill over and over, so compare players within a drill, not against match numbers." : "";
+  const rows=players.map(p=>({p,d:derive(p.by)}));
+  rows.sort((a,b)=>sortDir*((a.d[sortKey]??0)-(b.d[sortKey]??0)) || a.p.name.localeCompare(b.p.name));
+  if(sortKey==="name") rows.sort((a,b)=>sortDir*-1*a.p.name.localeCompare(b.p.name));
+  const c=(v,good)=>v==="—"?`<span class="muted">—</span>`:v;
+  $("#app").innerHTML=`
+  <div class="tiles">
+    <div class="tile"><div class="k">Touches logged</div><div class="v">${T.touches}</div><div class="d">${players.length} players</div></div>
+    <div class="tile"><div class="k">Hitting efficiency</div><div class="v">${eff(T.kills,T.ae,T.ta)}</div><div class="d">${T.kills} kills · ${T.ae} errors · ${T.ta} attempts</div></div>
+    <div class="tile"><div class="k">Pass average</div><div class="v">${passAvg(team.pass)}</div><div class="d">0 to 3 scale · ${team.pass.n} passes</div></div>
+    <div class="tile"><div class="k">Serving</div><div class="v">${pct(T.sn-T.se,T.sn)}</div><div class="d">in · ${T.aces} aces · ${T.se} errors</div></div>
+  </div>
+  <div class="card"><div class="tablewrap"><table>
+    <thead><tr>${[["name","Player"],["touches","Touches"],["ta","Attacks"],["eff","Hit eff"],["kills","Kills"],["sn","Serves"],["aces","Aces"],["pass","Pass avg"],["sets","Sets"],["blocks","Blocks"],["digs","Digs"]].map(([k,l])=>`<th data-k="${k}">${l}${sortKey===k?(sortDir<0?" ↓":" ↑"):""}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map(({p,d})=>`<tr data-n="${p.name}"><td class="name">${p.name}</td><td>${d.touches}</td><td>${d.ta||c("—")}</td>
+      <td class="${d.ta?(d.eff>=.25?"pos":d.eff<0?"neg":""):""}">${eff(d.kills,d.ae,d.ta)}</td><td>${d.kills||c("—")}</td><td>${d.sn||c("—")}</td><td>${d.aces||c("—")}</td>
+      <td>${d.pass>=0?d.pass.toFixed(2):c("—")}</td><td>${d.sets||c("—")}</td><td>${d.blocks||c("—")}</td><td>${d.digs||c("—")}</td></tr>`).join("")}</tbody>
+  </table></div></div>
+  <div class="note">${typeNote} Hitting efficiency = (kills − errors) ÷ attempts. Pass average: perfect 3, playable 2, error 0. Tap a player to watch their touches.</div>
+  <div class="player" id="pl"></div>`;
+  document.querySelectorAll("th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;sortDir=sortKey===k?-sortDir:-1;sortKey=k;render(cur)});
+  document.querySelectorAll("tbody tr").forEach(tr=>tr.onclick=()=>openPlayer(players.find(p=>p.name===tr.dataset.n)));
+  const want=openName||cur; if(want){const p=players.find(x=>x.name===want); if(p) openPlayer(p,false)}
+}
+function openPlayer(p,scroll=true){
+  cur=p.name; if(yt){try{yt.destroy()}catch{} yt=null} document.querySelectorAll("tbody tr").forEach(r=>r.classList.toggle("on",r.dataset.n===p.name));
+  history.replaceState(null,"",`#s=${encodeURIComponent($("#session").value)}&p=${encodeURIComponent(p.name)}`);
+  const by=p.by, d=derive(by), hasVid=p.clips.some(c=>c.yt);
+  const sk=(k,v,dd)=>`<div class="sk"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${dd}</div></div>`;
+  const el=$("#pl"); el.classList.add("on");
+  el.innerHTML=`<div class="card pp">
+      <div class="ph"><h2>${p.name}</h2><div style="display:flex;gap:8px"><button class="btn" id="playall" ${hasVid?"":"disabled"}>▶ Play highlights</button><button class="btn ghost" id="copy">Copy link</button></div></div>
+      <div class="player-video" id="pv">${hasVid?`<div id="ytp"></div>`:`<div style="display:flex;align-items:center;justify-content:center;padding:20px">No video linked for this session yet. Whoever ran the review can add the YouTube link and republish.</div>`}</div>
+      <div class="now" id="now"></div>
+    </div>
+    <div class="card pp">
+      <div class="skills">
+        ${sk("Attack",`${eff(d.kills,d.ae,d.ta)}`,`${d.kills}K · ${d.ae}E · ${d.ta} att`)}
+        ${sk("Serve",pct(d.sn-d.se,d.sn),`${d.aces} aces · ${d.se} err`)}
+        ${sk("Pass",passAvg(by.pass),`${by.pass.n} passes`)}
+        ${sk("Set",by.set.n,`${by.set.great} great`)}
+        ${sk("Block",by.block.n,`${by.block.great} stuffs`)}
+        ${sk("Dig",by.dig.n,`${by.dig.great+by.dig.good} kept up`)}
+      </div>
+      <div class="filters" id="cf">${["all",...ACTS.filter(a=>by[a].n)].map(a=>`<button data-a="${a}" class="${a==="all"?"on":""}">${a}</button>`).join("")}<button data-a="great">great only</button></div>
+      <div class="clips" id="clips"></div>
+    </div>`;
+  let filt="all"; const list=()=>p.clips.filter(c=>filt==="all"||c.action===filt||(filt==="great"&&c.outcome==="great")).sort((a,b)=>a.sid===b.sid?a.t-b.t:a.sid.localeCompare(b.sid));
+  const drawClips=()=>{$("#clips").innerHTML=list().map((c,i)=>`<div class="clip" data-i="${i}"><span class="t">${fmt(c.t)}</span><span class="tag">${c.action}</span>${c.outcome?`<span class="tag ${c.outcome}">${c.outcome}</span>`:""}${$("#session").value==="__all"?`<span class="muted" style="font-size:12px">${c.stitle}</span>`:""}</div>`).join("")||`<div class="muted" style="padding:12px 0">No clips.</div>`;
+    document.querySelectorAll(".clip").forEach(el=>el.onclick=()=>playList(list(),+el.dataset.i,true))};
+  $("#cf").querySelectorAll("button").forEach(b=>b.onclick=()=>{filt=b.dataset.a;$("#cf").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));drawClips()});
+  drawClips();
+  $("#playall").onclick=()=>playList(list(),0,false);
+  $("#copy").onclick=()=>{navigator.clipboard?.writeText(location.href);$("#copy").textContent="Copied"};
+  if(scroll) el.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function playList(clips,start,single){
+  queue=single?[clips[start]]:clips.filter(c=>c.yt); qi=single?0:Math.max(0,queue.indexOf(clips[start]));
+  if(!queue.length||!queue[0].yt) return;
+  const go=()=>{const c=queue[qi]; $("#now").textContent=`Clip ${qi+1} of ${queue.length} · ${c.action}${c.outcome?" · "+c.outcome:""} · ${fmt(c.t)}`;
+    yt.loadVideoById({videoId:c.yt,startSeconds:Math.max(0,c.t-3),endSeconds:c.t+2})};
+  if(!yt){ if(!ytReady){setTimeout(()=>playList(clips,start,single),300);return}
+    yt=new YT.Player("ytp",{playerVars:{rel:0,modestbranding:1,playsinline:1},events:{onReady:go,onStateChange:e=>{if(e.data===YT.PlayerState.ENDED&&qi<queue.length-1){qi++;go()}}}});
+  } else go();
+}
+load();
+</script>
+</body>
+</html>

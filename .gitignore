@@ -1,0 +1,8 @@
+work/
+*.mp4
+*.mov
+*.m4v
+*.pt
+__pycache__/
+.DS_Store
+.venv/
