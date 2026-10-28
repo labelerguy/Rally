@@ -9,7 +9,8 @@ NOSE, L_SH, R_SH, L_EL, R_EL, L_WR, R_WR, L_HIP, R_HIP, L_KN, R_KN, L_AN, R_AN =
 
 H_BINS, S_BINS, V_BINS = 12, 3, 3
 REGION_DIM = H_BINS * S_BINS * V_BINS
-FEAT_DIM = REGION_DIM * 2
+N_REGIONS = 3  # shirt, shorts, shoes
+FEAT_DIM = REGION_DIM * N_REGIONS
 
 
 def _hist(hsv_patch: np.ndarray) -> np.ndarray | None:
@@ -23,7 +24,8 @@ def _hist(hsv_patch: np.ndarray) -> np.ndarray | None:
 
 
 def _regions(box, kp):
-    """Return (shirt_box, shorts_box) in pixel coords. Uses pose when confident, else box fractions."""
+    """Return (shirt, shorts, shoes) boxes in pixel coords. Uses pose when confident, else box fractions.
+    Shoes matter: half a team can wear the same practice shirt and black shorts, but shoes differ."""
     x1, y1, x2, y2 = box
     w, h = x2 - x1, y2 - y1
     pts_ok = kp is not None and min(kp[L_SH, 2], kp[R_SH, 2], kp[L_HIP, 2], kp[R_HIP, 2]) > 0.5
@@ -41,11 +43,12 @@ def _regions(box, kp):
     else:
         shirt = (x1 + 0.3 * w, y1 + 0.22 * h, x2 - 0.3 * w, y1 + 0.45 * h)
         shorts = (x1 + 0.3 * w, y1 + 0.5 * h, x2 - 0.3 * w, y1 + 0.62 * h)
-    return shirt, shorts
+    shoes = (x1 + 0.1 * w, y2 - max(4.0, 0.08 * h), x2 - 0.1 * w, y2)
+    return shirt, shorts, shoes
 
 
 def clothing_hist(frame: np.ndarray, box, kp, min_h: int = 34) -> np.ndarray | None:
-    """Concatenated HSV histograms of shirt and shorts. None if the person is too small."""
+    """Concatenated HSV histograms of shirt, shorts and shoes. None if the person is too small."""
     if box[3] - box[1] < min_h:
         return None
     H, W = frame.shape[:2]
@@ -62,14 +65,16 @@ def clothing_hist(frame: np.ndarray, box, kp, min_h: int = 34) -> np.ndarray | N
     return np.concatenate(out).astype(np.float32)
 
 
+REGION_WEIGHTS = (0.5, 0.2, 0.3)  # shirt, shorts, shoes
+
+
 def hellinger(a: np.ndarray, b: np.ndarray) -> float:
-    """Distance between two concatenated histograms, 0 (same) to 1 (nothing shared)."""
-    ra, rb = a[:REGION_DIM], b[:REGION_DIM]
-    sa, sb = a[REGION_DIM:], b[REGION_DIM:]
-    d_shirt = np.sqrt(max(0.0, 1 - np.sum(np.sqrt(ra * rb))))
-    d_shorts = np.sqrt(max(0.0, 1 - np.sum(np.sqrt(sa * sb))))
-    # Shirts carry more identity than shorts (most people wear black shorts).
-    return float(0.7 * d_shirt + 0.3 * d_shorts)
+    """Distance between two clothing descriptors, 0 (same) to 1 (nothing shared)."""
+    d = 0.0
+    for r, wgt in enumerate(REGION_WEIGHTS):
+        ra, rb = a[r * REGION_DIM:(r + 1) * REGION_DIM], b[r * REGION_DIM:(r + 1) * REGION_DIM]
+        d += wgt * np.sqrt(max(0.0, 1 - float(np.sum(np.sqrt(ra * rb)))))
+    return float(d)
 
 
 def crop_person(frame: np.ndarray, box, out_h: int = 160) -> np.ndarray | None:

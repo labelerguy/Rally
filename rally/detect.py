@@ -37,24 +37,21 @@ def pick_device(requested: str | None = None) -> str:
 
 
 def default_imgsz(width: int) -> int:
-    # Far-court players are small. Give the model more pixels when the source has them.
-    if width <= 960:
-        return 640
-    if width <= 1920:
-        return 960
-    return 1280
+    # Far-court players are small. Upscaling low-res video before detection finds far more of them
+    # (tested on 360p practice film: 1600 finds ~20% more players than 1280, ~3x more than 640).
+    return int(min(1920, max(1280, round(width * 2.5 / 32) * 32)))
 
 
 def run(
     video: str,
     out_dir: Path,
     sample_fps: float = 10.0,
-    model_name: str = "yolo11s-pose.pt",
+    model_name: str = "yolo11n-pose.pt",
     device: str | None = None,
     imgsz: int | None = None,
     start: float = 0.0,
     end: float | None = None,
-    min_box_h: int = 28,
+    min_box_h: int = 22,
 ) -> dict:
     from ultralytics import YOLO
 
@@ -106,7 +103,7 @@ def run(
         small = cv2.resize(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), (64, 36)).astype(np.float32)
         if prev_small is not None:
             diff = float(np.mean(np.abs(small - prev_small)))
-            if diff > 28:
+            if diff > 40:
                 cuts.append(round(fi / fps, 2))
         prev_small = small
 
@@ -117,7 +114,7 @@ def run(
             imgsz=imgsz,
             device=device,
             classes=[0],
-            conf=0.2,
+            conf=0.15,
             verbose=False,
         )[0]
 

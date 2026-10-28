@@ -39,7 +39,7 @@ def main():
     p = sub.add_parser("process", help="run detection, grouping and touch finding on a video")
     p.add_argument("video")
     p.add_argument("--name", help="session name, e.g. 2026-10-27-practice (default: video filename)")
-    p.add_argument("--model", default="yolo11s-pose.pt", help="pose model; yolo11m-pose.pt is slower but sees far players better")
+    p.add_argument("--model", default="yolo11n-pose.pt", help="pose model (nano tested best on small far-court players)")
     p.add_argument("--fps", type=float, default=10.0, help="frames per second to analyze (default 10)")
     p.add_argument("--imgsz", type=int, help="model input size (default picks by video resolution)")
     p.add_argument("--device", help="mps, cpu, or 0 for CUDA (default: auto)")

@@ -19,6 +19,7 @@ import numpy as np
 from .features import L_AN, L_EL, L_HIP, L_SH, L_WR, NOSE, R_AN, R_EL, R_HIP, R_SH, R_WR
 
 KP_OK = 0.35
+WRIST_OK = 0.25  # wrists are small and blurry on far players; accept weaker evidence
 BASE_SCORE = {"attack": 1.0, "block": 0.9, "set": 0.75, "serve": 0.6, "pass": 0.8}
 
 
@@ -42,7 +43,7 @@ def _pose_states(box: np.ndarray, kp: np.ndarray, hb: np.ndarray) -> dict[str, n
     hip_ok = ok(L_HIP) & ok(R_HIP)
     hip_y = np.where(hip_ok, (y(L_HIP) + y(R_HIP)) / 2, box[:, 1] + 0.52 * hb)
 
-    lw_ok, rw_ok = ok(L_WR), ok(R_WR)
+    lw_ok, rw_ok = kp[:, L_WR, 2] > WRIST_OK, kp[:, R_WR, 2] > WRIST_OK
     lw_up = lw_ok & (y(L_WR) < head_y - 0.04 * hb)
     rw_up = rw_ok & (y(R_WR) < head_y - 0.04 * hb)
     both_up = lw_up & rw_up
@@ -54,16 +55,23 @@ def _pose_states(box: np.ndarray, kp: np.ndarray, hb: np.ndarray) -> dict[str, n
     set_shape = both_up & hands_close & (np.minimum(y(L_WR), y(R_WR)) > head_y - 0.35 * hb)
     block_shape = both_up & (np.abs(y(L_WR) - y(R_WR)) < 0.1 * hb)
 
-    # Platform: wrists together, around or below hip height, arms extended away from shoulders.
-    wr_mid_y = (y(L_WR) + y(R_WR)) / 2
-    el_ok = ok(L_EL) & ok(R_EL)
-    arm_len = np.where(el_ok, np.hypot(x(L_WR) - x(L_SH), y(L_WR) - y(L_SH)), 0)
+    # Platform: wrists together between chest and knees, arms reaching out (not hanging at the sides,
+    # which in a side view also puts both wrists in the same spot), and legs bent.
+    wr_mid_x, wr_mid_y = (x(L_WR) + x(R_WR)) / 2, (y(L_WR) + y(R_WR)) / 2
+    sh_mid_x = (x(L_SH) + x(R_SH)) / 2
+    foot_y = box[:, 3]
+    leg = (foot_y - hip_y) / np.maximum(hb, 1)
+    leg_ref = np.median(leg[hip_ok]) if hip_ok.any() else 0.5
+    crouch = hip_ok & (leg < 0.9 * leg_ref)
+    reach = np.hypot(wr_mid_x - sh_mid_x, wr_mid_y - sh_y)
+    frontal = sh_w > 0.14 * hb
+    arms_out = (np.abs(wr_mid_x - sh_mid_x) > 0.09 * hb) | frontal
     platform = (
-        lw_ok & rw_ok & sh_ok
-        & (wr_dist < 0.14 * hb)
-        & (wr_mid_y > sh_y + 0.25 * hb)
-        & (wr_mid_y < hip_y + 0.22 * hb)
-        & (arm_len > 0.22 * hb)
+        lw_ok & rw_ok & sh_ok & (crouch | frontal) & arms_out
+        & (wr_dist < 0.12 * hb)
+        & (wr_mid_y > sh_y + 0.2 * hb)
+        & (wr_mid_y < hip_y + 0.2 * hb)
+        & (reach > 0.28 * hb)
     )
     conf = np.nanmean(kp[:, [NOSE, L_SH, R_SH, L_WR, R_WR, L_HIP, R_HIP], 2], axis=1)
     return {
@@ -73,20 +81,24 @@ def _pose_states(box: np.ndarray, kp: np.ndarray, hb: np.ndarray) -> dict[str, n
 
 
 def _jump(box: np.ndarray, hb: np.ndarray, sps: float) -> np.ndarray:
-    """Feet clearly higher than both shortly before and shortly after. A walk away from the camera
-    also raises the feet in the image, but slowly and without coming back down."""
-    foot = box[:, 3]
+    """The whole body clearly higher than both shortly before and shortly after.
+
+    Two look-alikes are rejected: walking away from the camera (feet rise slowly and don't come back
+    down) and someone passing in front (the box bottom jumps up because the legs are hidden, but the
+    head doesn't move). In a real jump, the top of the box rises along with the feet."""
+    foot, top = box[:, 3], box[:, 1]
     n = len(foot)
     w_far, w_near = int(round(1.4 * sps)), int(round(0.45 * sps))
     jump = np.zeros(n, bool)
     hmed = _rolling_median(hb, int(sps))
     for i in range(n):
-        before = foot[max(0, i - w_far): max(0, i - w_near)]
-        after = foot[i + w_near + 1: i + w_far + 1]
-        if len(before) < 2 or len(after) < 2:
+        lo_b, hi_b = max(0, i - w_far), max(0, i - w_near)
+        lo_a, hi_a = i + w_near + 1, i + w_far + 1
+        if hi_b - lo_b < 2 or len(foot[lo_a:hi_a]) < 2:
             continue
-        rise = min(np.median(before), np.median(after)) - foot[i]
-        if rise > 0.11 * hmed[i]:
+        foot_rise = min(np.median(foot[lo_b:hi_b]), np.median(foot[lo_a:hi_a])) - foot[i]
+        top_rise = min(np.median(top[lo_b:hi_b]), np.median(top[lo_a:hi_a])) - top[i]
+        if foot_rise > 0.08 * hmed[i] and top_rise > 0.3 * foot_rise:
             jump[i] = True
     return jump
 
@@ -102,6 +114,8 @@ def _events(states: dict, jump: np.ndarray) -> list[tuple[int, str, float]]:
         if jump_near[i] and s["block_shape"][i]:
             labels[i] = "block"
         elif jump_near[i] and (s["hit_arm"][i] or s["both_up"][i]):
+            labels[i] = "attack"
+        elif jump[i]:
             labels[i] = "attack"
         elif s["set_shape"][i]:
             labels[i] = "set"
@@ -130,8 +144,9 @@ def _events(states: dict, jump: np.ndarray) -> list[tuple[int, str, float]]:
         peak = max((k for k in seg if labels[k] == act), key=lambda k: strength[k])
         dur = j - i + 1
         # One-frame flickers are mostly noise, except jumps (fast at 10 samples/s).
-        if dur >= 2 or act in ("attack", "block"):
-            out.append((peak, act, votes[act] / dur * min(1.0, 0.5 + 0.25 * dur)))
+        # Contacts are fast: at 10 samples/s a set or pass may show in a single frame. Keep those,
+        # with a lower score, so they sort below multi-frame evidence in the review app.
+        out.append((peak, act, votes[act] / dur * min(1.0, 0.6 + 0.2 * dur)))
         i = j + 1
     return out
 
