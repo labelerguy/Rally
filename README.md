@@ -73,6 +73,17 @@ Paste the session's YouTube link into the review app header before publishing. T
 3. **Don't move the camera mid-session.** Rally handles it, but every move breaks tracks.
 4. **Distinct practice shirts help grouping** the way jerseys help in matches.
 
+## How well it works right now
+
+Tested on a 360p YouTube copy of a 2-hour practice, on 4 minutes of 6-on-6:
+
+- **Detection:** about 8 to 11 people per frame, after upscaling. Without upscaling it found 2 to 3.
+- **Touch candidates:** 56 in 4 minutes, and about half are real touches. Most of the false ones are spectators on the side (one "Not on team" click removes them) or people standing with their arms in a pass-like position.
+- **Misses:** it catches a minority of all real contacts. Jumps (attacks, blocks, jump serves) and clear sets come through best. Quick passes from far-court players are the weakest. Use `A` in the review app to add what it missed.
+- **Grouping:** distinct outfits group cleanly. Players in identical practice shirts separate by shoe color, and each person usually splits into several groups that you merge by giving them the same name.
+
+The biggest single improvement is better footage. The original phone file at 1080p, instead of the YouTube 360p copy, roughly triples the pixels on every far-court player.
+
 ## What v1 doesn't do yet
 
 - **Ball tracking.** Touches come from body pose, so expect false candidates (stretching, high-fives) and some misses. Review handles both.

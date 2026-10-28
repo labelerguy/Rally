@@ -77,6 +77,16 @@ def hellinger(a: np.ndarray, b: np.ndarray) -> float:
     return float(d)
 
 
+def pairwise_hellinger(X: np.ndarray) -> np.ndarray:
+    """All-pairs version of hellinger() for an (n, FEAT_DIM) matrix. Same result, thousands of times faster."""
+    S = np.sqrt(np.clip(X, 0, None)).astype(np.float64)
+    D = np.zeros((len(X), len(X)))
+    for r, wgt in enumerate(REGION_WEIGHTS):
+        R = S[:, r * REGION_DIM:(r + 1) * REGION_DIM]
+        D += wgt * np.sqrt(np.clip(1 - R @ R.T, 0, None))
+    return D.astype(np.float32)
+
+
 def crop_person(frame: np.ndarray, box, out_h: int = 160) -> np.ndarray | None:
     H, W = frame.shape[:2]
     x1, y1, x2, y2 = box

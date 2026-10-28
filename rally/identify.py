@@ -12,7 +12,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .features import hellinger
+from .features import hellinger, pairwise_hellinger
 
 
 def run(work: Path, min_samples: int = 15, threshold: float = 0.42, attach_threshold: float = 0.36) -> dict:
@@ -35,16 +35,15 @@ def run(work: Path, min_samples: int = 15, threshold: float = 0.42, attach_thres
     if core:
         feats = {t: np.asarray(tracks[t]["feat"], np.float32) for t in core + minor}
         n = len(core)
-        D = np.zeros((n, n), np.float32)
-        for i in range(n):
-            for j in range(i + 1, n):
-                d = hellinger(feats[core[i]], feats[core[j]])
-                ti, tj = tracks[core[i]], tracks[core[j]]
-                if ti["first"] <= tj["last"] and tj["first"] <= ti["last"]:
-                    shared = np.intersect1d(frames_of[int(core[i])], frames_of[int(core[j])], assume_unique=True)
-                    if len(shared) >= 2:
-                        d = 5.0  # cannot-link
-                D[i, j] = D[j, i] = d
+        D = pairwise_hellinger(np.stack([feats[t] for t in core]))
+        firsts = np.array([tracks[t]["first"] for t in core])
+        lasts = np.array([tracks[t]["last"] for t in core])
+        overlap = (firsts[:, None] <= lasts[None, :]) & (firsts[None, :] <= lasts[:, None])
+        for i, j in zip(*np.nonzero(np.triu(overlap, 1))):
+            shared = np.intersect1d(frames_of[int(core[i])], frames_of[int(core[j])], assume_unique=True)
+            if len(shared) >= 2:
+                D[i, j] = D[j, i] = 5.0  # cannot-link: one person can't be in two places
+        np.fill_diagonal(D, 0)
 
         if n == 1:
             labels = np.array([0])
